@@ -2,10 +2,19 @@ import React from 'react';
 import bgImage from './Images/bgImg.jpg';
 import bgImage2 from './Images/bgImg2.jpg';
 import avatarImage from './Images/smonkey.png';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import avatarImage2 from './Images/avatar2.jpg';
 
 function Login() {
+    const navigate = useNavigate();
+
+    const handleLogin = (e) => {
+
+        e.preventDefault();
+
+        navigate('/main');
+  };
+
   return (
     <div
       className="flex items-center justify-center w-full h-screen bg-cover bg-center"
@@ -22,7 +31,7 @@ function Login() {
             <h2 className="text-2xl font-bold">Login</h2>
           </div>
 
-          <form>
+          <form onSubmit={handleLogin}>
             <div className="mb-4">
               <label className="block text-sm font-semibold mb-1">Username</label>
               <input
