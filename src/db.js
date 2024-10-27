@@ -7,8 +7,11 @@ const connection = mysql.createConnection({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   connectTimeout: 10000,
-  port: process.env.DB_PORT || 5000});
+ });
 
+console.log(`Host: ${process.env.DB_HOST}`);
+console.log(`User: ${process.env.DB_USER}`);
+console.log(`Database: ${process.env.DB_NAME}`);
 
 connection.connect((err) => {
   if (err) {

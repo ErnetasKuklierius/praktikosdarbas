@@ -3,11 +3,10 @@ import axios from "axios";
 
 function Main() {
   const [events, setEvents] = useState([]);
-  const [newEvent, setNewEvent] = useState({ title: "", description: "", date: "" });
-  const [rating, setRating] = useState({});
+  const [newEvent, setNewEvent] = useState({ title: "", description: "", events_data: "" });
 
   useEffect(() => {
-    axios.get("http://localhost:5000/api/events").then((res) => {
+    axios.get("http://localhost:3001/api/events").then((res) => {
       setEvents(res.data);
     });
   }, []);
@@ -19,17 +18,12 @@ function Main() {
 
   const handleSubmitEvent = async (e) => {
     e.preventDefault();
-    await axios.post("http://localhost:5000/api/events", newEvent);
-    setNewEvent({ title: "", description: "", date: "" });
-    const response = await axios.get("http://localhost:5000/api/events");
+    await axios.post("http://localhost:3001/api/events", newEvent);
+    setNewEvent({ title: "", description: "", events_data: "" });
+    const response = await axios.get("http://localhost:3001/api/events");
     setEvents(response.data);
   };
 
-  const handleRating = async (eventId, rating) => {
-    await axios.post(`http://localhost:5000/api/events/${eventId}/rate`, { rating });
-    const response = await axios.get("http://localhost:5000/api/events");
-    setEvents(response.data);
-  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -87,23 +81,6 @@ function Main() {
                 <h3 className="text-xl font-semibold">{event.title}</h3>
                 <p className="text-gray-600">{event.description}</p>
                 <p className="text-gray-400">Date: {new Date(event.date).toLocaleString()}</p>
-                <div className="flex items-center mt-4">
-                  <span className="mr-2">Rate this event:</span>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      className={`${
-                        rating[event.id] >= star ? "text-yellow-500" : "text-gray-300"
-                      } text-xl mx-1`}
-                      onClick={() => {
-                        setRating({ ...rating, [event.id]: star });
-                        handleRating(event.id, star);
-                      }}
-                    >
-                      ★
-                    </button>
-                  ))}
-                </div>
               </div>
             ))
           ) : (
