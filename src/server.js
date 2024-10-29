@@ -7,6 +7,34 @@ const cors = require('cors');
 app.use(cors());
 app.use(express.json());
 
+
+
+app.post('/api/users', async (req, res) => {
+  const { username, password } = req.body;
+
+  try {
+    const [user] = await db.execute('SELECT * FROM users WHERE username = ?', [username]);
+    const [password] = await db.execute('SELECT * FROM users WHERE password = ?', [password]);
+
+    if (user.length > 0) {
+      const isValidPassword = password === user[0].password;
+
+      if (isValidPassword) {
+        return res.status(200).json({ message: 'Login successful', role: user[0].role });
+      } else {
+        return res.status(401).json({ error: 'Invalid username or password' });
+      }
+    } else {
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+
 app.post('/api/events', async (req, res) => {
   const { title, description, events_data } = req.body;  
   try {
@@ -16,8 +44,10 @@ app.post('/api/events', async (req, res) => {
     );
     res.status(201).json({ message: 'Event added successfully', eventId: result.insertId });
   } catch (error) {
-    res.status(500).json({ error: 'Error adding event' });
+    console.error('Error fetching events:', error);
+    res.status(500).json({ error: 'Error fetching events' });
   }
+  
 });
 
 app.get('/api/events', async (req, res) => {
