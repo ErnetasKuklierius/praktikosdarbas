@@ -6,7 +6,7 @@ Dešiniuoju pelės klavišu spustelėkite aplanką src.
 
 Iš kontekstinio meniu pasirinkite Open with Git Bash (Atidaryti su Git Bash).
 
-Kai Git Bash langas atsidarys, įveskite "npm run dev" ir paspauskite Enter.
+Kai Git Bash langas atsidarys, įveskite "npm install" ir "npm run dev".
 
 
 
