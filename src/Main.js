@@ -1,37 +1,74 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom"
-
+import { useNavigate } from "react-router-dom";
 
 function Main() {
   const [events, setEvents] = useState([]);
-  const [newEvent, setNewEvent] = useState({ title: "", description: "", events_data: "" });
+  const [categories, setCategories] = useState([]);
+  const [newEvent, setNewEvent] = useState({ title: "", category: "", location: "", events_data: "", picture: null });
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get("http://localhost:3001/api/events")
-      .then((res) => {
-        setEvents(res.data);
-      })
-      .catch(error => {
-        console.error('Error fetching events:', error);
-      });
+    fetchEvents();
+    fetchCategories();
   }, []);
+
+  const fetchEvents = async () => {
+    try {
+      const res = await axios.get("http://localhost:3001/api/events");
+      setEvents(res.data);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await axios.get("http://localhost:3001/api/categories");
+      setCategories(res.data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewEvent({ ...newEvent, [name]: value });
   };
 
+  const handleFileChange = (e) => {
+    setNewEvent({ ...newEvent, picture: e.target.files[0] });
+  };
+
   const handleSubmitEvent = async (e) => {
     e.preventDefault();
+    const formData = new FormData();
+    formData.append('title', newEvent.title);
+    formData.append('category', newEvent.category);
+    formData.append('location', newEvent.location);
+    formData.append('events_data', newEvent.events_data);
+    formData.append('picture', newEvent.picture);
+
     try {
-      await axios.post("http://localhost:3001/api/events", newEvent);
-      setNewEvent({ title: "", description: "", events_data: "" });
-      const response = await axios.get("http://localhost:3001/api/events");
-      setEvents(response.data);
+      await axios.post("http://localhost:3001/api/events", formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setNewEvent({ title: "", category: "", location: "", events_data: "", picture: null });
+      fetchEvents();
     } catch (error) {
       console.error('Error adding event:', error);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    try {
+      await axios.delete(`http://localhost:3001/api/events/${eventId}`);
+      setEvents(events.filter(event => event.id !== eventId));
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      if (error.response) {
+        console.log('Response data:', error.response.data);
+      }
     }
   };
 
@@ -53,7 +90,7 @@ function Main() {
 
         <div className="bg-white p-6 rounded-lg shadow-md mb-8">
           <h2 className="text-2xl font-bold mb-4">Add New Event</h2>
-          <form onSubmit={handleSubmitEvent}>
+          <form onSubmit={handleSubmitEvent} encType="multipart/form-data">
             <div className="mb-4">
               <input
                 type="text"
@@ -66,14 +103,32 @@ function Main() {
               />
             </div>
             <div className="mb-4">
-              <textarea
-                name="description"
-                value={newEvent.description}
+              <label className="block mb-2" htmlFor="category">Event Category</label>
+              <select
+                name="category"
+                value={newEvent.category}
                 onChange={handleInputChange}
-                placeholder="Event Description"
                 className="w-full p-2 border border-gray-300 rounded"
                 required
-              ></textarea>
+              >
+                <option value="">Select a category</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.name}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mb-4">
+              <input
+                type="text"
+                name="location"
+                value={newEvent.location}
+                onChange={handleInputChange}
+                placeholder="Event Location"
+                className="w-full p-2 border border-gray-300 rounded"
+                required
+              />
             </div>
             <div className="mb-4">
               <input
@@ -81,6 +136,15 @@ function Main() {
                 name="events_data"
                 value={newEvent.events_data}
                 onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 rounded"
+                required
+              />
+            </div>
+            <div className="mb-4">
+              <input
+                type="file"
+                name="picture"
+                onChange={handleFileChange}
                 className="w-full p-2 border border-gray-300 rounded"
                 required
               />
@@ -100,8 +164,18 @@ function Main() {
             events.map((event) => (
               <div key={event.id} className="mb-4 p-4 border border-gray-200 rounded">
                 <h3 className="text-xl font-semibold">{event.title}</h3>
-                <p className="text-gray-600">{event.description}</p>
+                <p className="text-gray-600">Category: {event.category}</p>
+                <p className="text-gray-600">Location: {event.location}</p>
                 <p className="text-gray-400">Date: {new Date(event.events_data).toLocaleString()}</p>
+                {event.picture && (
+                  <img src={`http://localhost:3001/uploads/${event.picture}`} alt={event.title} className="mt-2 max-w-full h-auto rounded" />
+                )}
+                <button
+                  onClick={() => handleDeleteEvent(event.id)}
+                  className="mt-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                >
+                  Delete Event
+                </button>
               </div>
             ))
           ) : (

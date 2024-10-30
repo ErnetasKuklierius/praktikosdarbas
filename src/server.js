@@ -3,24 +3,36 @@ const app = express();
 const db = require('./db');
 const PORT = 3001;
 const cors = require('cors');
+const multer = require('multer');
+
+const upload = multer({ dest: 'uploads/' });
 
 app.use(cors());
 app.use(express.json());
 
 
+app.get('/api/users', async (req, res) => {
+  try {
+      const users = await db.query('SELECT id, username, isBlocked FROM users');
+      res.status(200).json(users);
+  } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).send({ message: 'Error fetching users.' });
+  }
+});
 
 app.post('/api/users', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const [user] = await db.execute('SELECT * FROM users WHERE username = ?', [username]);
-    const [password] = await db.execute('SELECT * FROM users WHERE password = ?', [password]);
+    const [rows] = await db.execute('SELECT * FROM users WHERE username = ?', [username]);
 
-    if (user.length > 0) {
-      const isValidPassword = password === user[0].password;
+    if (rows && rows.length > 0) {
+      const user = rows[0];
+      const isValidPassword = password === user.password;
 
       if (isValidPassword) {
-        return res.status(200).json({ message: 'Login successful', role: user[0].role });
+        return res.status(200).json({ message: 'Login successful', role: user.role });
       } else {
         return res.status(401).json({ error: 'Invalid username or password' });
       }
@@ -33,21 +45,61 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-
-
-app.post('/api/events', async (req, res) => {
-  const { title, description, events_data } = req.body;  
+app.post('/api/users/block', async (req, res) => {
+  const { userId, action } = req.body;
   try {
     const [result] = await db.execute(
-      'INSERT INTO events (title, description, events_data) VALUES (?, ?, ?)',
-      [title, description, events_data]
+      'UPDATE users SET isBlocked = ? WHERE id = ?',
+      [action === 'block' ? 1 : 0, userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: `User ${action}ed successfully` });
+  } catch (error) {
+    console.error('Error blocking/unblocking user:', error);
+    res.status(500).json({ error: 'Error processing request' });
+  }
+});
+
+
+
+app.post('/api/events', upload.single('picture'), async (req, res) => {
+  const { title, events_data, location, category } = req.body;
+  const picture = req.file;
+
+  try {
+    if (!title || !events_data || !location || !category || !picture) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const [result] = await db.execute(
+      'INSERT INTO events (title, events_data, location, picture, category) VALUES (?, ?, ?, ?, ?)',
+      [title, events_data, location, picture.filename, category]
     );
     res.status(201).json({ message: 'Event added successfully', eventId: result.insertId });
   } catch (error) {
-    console.error('Error fetching events:', error);
-    res.status(500).json({ error: 'Error fetching events' });
+    console.error('Error adding event:', error);
+    res.status(500).json({ error: 'Error adding event' });
   }
-  
+});
+
+app.post('/api/categories', async (req, res) => {
+  const { name } = req.body;
+
+  try {
+    if (!name) {
+      return res.status(400).json({ error: 'Category name is required' });
+    }
+
+    const [result] = await db.execute('INSERT INTO categories (name) VALUES (?)', [name]);
+    res.status(201).json({ message: 'Category added successfully', categoryId: result.insertId });
+  } catch (error) {
+    console.error('Error adding category:', error);
+    res.status(500).json({ error: 'Error adding category' });
+  }
 });
 
 app.get('/api/events', async (req, res) => {
@@ -55,30 +107,43 @@ app.get('/api/events', async (req, res) => {
     const [events] = await db.execute('SELECT * FROM events');
     res.json(events);
   } catch (error) {
+    console.error('Error fetching events:', error);
     res.status(500).json({ error: 'Error fetching events' });
+  }
+});
+
+app.get('/api/categories', async (req, res) => {
+  try {
+    const [categories] = await db.execute('SELECT * FROM categories');
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ error: 'Error fetching categories' });
+  }
+});
+
+app.get('/api/blocked-users', async (req, res) => {
+  try {
+    const [blockedUsers] = await db.execute('SELECT * FROM users WHERE isBlocked = 1');
+    res.json(blockedUsers);
+  } catch (error) {
+    console.error('Error fetching blocked users:', error);
+    res.status(500).json({ error: 'Error fetching blocked users' });
   }
 });
 
 app.put('/api/events/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, description, events_data } = req.body;
+  const { title, events_data, location, picture, category } = req.body;
 
-  console.log('Request body:', req.body);
-
-  console.log("Request parameters and body data:");
-  console.log("ID:", id);
-  console.log("Title:", title);
-  console.log("Description:", description);
-  console.log("Date:", events_data);
-
-  if (!title || !description || !events_data || !id) {
+  if (!title || !events_data || !location || !category) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
     const [result] = await db.execute(
-      'UPDATE events SET title = ?, description = ?, events_data = ? WHERE id = ?',
-      [title, description, events_data, id]
+      'UPDATE events SET title = ?, events_data = ?, location = ?, picture = ?, category = ? WHERE id = ?',
+      [title, events_data, location, picture, category, id]
     );
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Event not found' });
@@ -90,13 +155,16 @@ app.put('/api/events/:id', async (req, res) => {
   }
 });
 
-
 app.delete('/api/events/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await db.execute('DELETE FROM events WHERE id = ?', [id]);
+    const [result] = await db.execute('DELETE FROM events WHERE id = ?', [id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
     res.json({ message: 'Event deleted' });
   } catch (error) {
+    console.error('Error deleting event:', error);
     res.status(500).json({ error: 'Error deleting event' });
   }
 });
