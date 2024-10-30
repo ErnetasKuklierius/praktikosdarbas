@@ -4,7 +4,6 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import './index.css';
 import reportWebVitals from './reportWebVitals';
 import Login from './Login';
-import Register from './Register';
 import App from './App';
 
 
@@ -19,7 +18,6 @@ root.render(
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
       </Routes>
     </Router>
   </React.StrictMode>,

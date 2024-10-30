@@ -20,19 +20,25 @@ const AdminPanel = () => {
   const fetchUsers = async () => {
     try {
         const response = await axios.get('http://localhost:3001/api/users'); 
-        console.log('Fetched users:', response.data);
         setUsers(response.data);
-        console.log('Full response:', response);
     } catch (error) {
         console.error('Error fetching users:', error);
     }
 };
 
 
-  const fetchEvents = async () => {
-    const response = await axios.get('http://localhost:3001/api/events'); 
-    setEvents(response.data);
-  };
+const fetchEvents = async () => {
+  try {
+    const response = await axios.get('http://localhost:3001/api/events');
+    
+    setEvents(response.data.map(event => ({
+      ...event,
+      isApproved: event.isApproved !== undefined ? event.isApproved : null
+    })));
+  } catch (error) {
+    console.error('Error fetching events:', error);
+  }
+};
 
   const fetchCategories = async () => {
     const response = await axios.get('http://localhost:3001/api/categories'); 
@@ -45,57 +51,45 @@ const AdminPanel = () => {
     setBlockedUsers(response.data);
   };
 
-  const blockUser  = async (userId) => {
-    console.log('Attempting to block user with ID:', userId);
-
+  const blockUser = async (userId) => {
     try {
-        await axios.post('http://localhost:3001/api/users/block', { userId, action: 'block' });
-
-        setUsers(prevUsers => {
-            const updatedUsers = prevUsers.map(user => 
-                user.id === userId ? { ...user, isBlocked: true } : user
-            );
-
-            const blockedUser  = updatedUsers.find(user => user.id === userId);
-            if (blockedUser ) {
-                setBlockedUsers(prevBlockedUsers => [
-                    ...prevBlockedUsers, 
-                    { ...blockedUser  }
-                ]);
-            } else {
-                console.error('User  not found in the updated state:', userId);
-            }
-
-            return updatedUsers;
-        });
-
+      await axios.post('http://localhost:3001/api/users/block', { id: userId, action: 'block' });
+      fetchUsers();
+      fetchBlockedUsers();
     } catch (error) {
-        console.error('Error blocking user:', error);
+      console.error('Error blocking user:', error);
     }
-};
+  };
 
-const unblockUser = async (userId) => {
-    console.log('Attempting to unblock user with ID:', userId);
-    await axios.post('http://localhost:3001/api/users/block', { userId, action: 'unblock' });
-    setUsers(users => users.map(user => user.id === userId ? { ...user, isBlocked: false } : user));
-    setBlockedUsers(blockedUsers => blockedUsers.filter(user => user.id !== userId));
-};
-
-  
-  const removeContent = async (contentId) => {
-    await axios.post('http://localhost:3001/api/remove-content', { contentId });
-    setEvents(events.filter(item => item.id !== contentId));
+  const unblockUser = async (userId) => {
+    try {
+      await axios.post('http://localhost:3001/api/users/block', { id: userId, action: 'unblock' });
+      fetchUsers();
+      fetchBlockedUsers(); 
+    } catch (error) {
+      console.error('Error unblocking user:', error);
+    }
   };
 
   const approveEvent = async (eventId) => {
-    await axios.post('http://localhost:3001/api/events', { eventId });
-    setEvents(events.map(item => item.id === eventId ? { ...item, isApproved: true } : item));
+    try {
+      await axios.post('http://localhost:3001/api/events/approve', { eventId });
+      setEvents(events.map(item => item.id === eventId ? { ...item, isApproved: true } : item));
+    } catch (error) {
+      console.error('Error approving event:', error);
+    }
   };
-
+  
   const rejectEvent = async (eventId) => {
-    await axios.post('http://localhost:3001/api/reject-event', { eventId });
-    setEvents(events.map(item => item.id === eventId ? { ...item, isApproved: false } : item));
+    try {
+      await axios.post('http://localhost:3001/api/events/reject', { eventId });
+      setEvents(events.map(item => item.id === eventId ? { ...item, isApproved: false } : item));
+    } catch (error) {
+      console.error('Error rejecting event:', error);
+    }
   };
+  
+  
 
   const handleLogout = () => {
     navigate("/login"); 
@@ -107,9 +101,6 @@ const unblockUser = async (userId) => {
     setCategories([...categories, response.data]); 
     setNewCategory('');
   };
-
-  console.log('Users state:', users);
-  console.log('Blocked Users state:', blockedUsers);
   
 
   return (
@@ -125,19 +116,20 @@ const unblockUser = async (userId) => {
       <section className="mb-10">
         <h2 className="text-2xl font-semibold mb-3">Manage Users</h2>
         <div className="bg-gray-100 p-5 rounded-md">
-          {users.map(user => (
-            <div key={user.id} className="flex justify-between items-center mb-2">
-              <span>{user.username} {user.isBlocked && '(Blocked)'}</span>
-              {!user.isBlocked && (
-                <button
-                  onClick={() => blockUser(user.id)}
-                  className="bg-red-500 text-white px-3 py-1 rounded-md"
-                >
-                  Block User
-                </button>
-              )}
-            </div>
-          ))}
+        {users.map(user => (
+    console.log(user),
+    <div key={user.id} className="flex justify-between items-center mb-2">
+        <span>{user.username}</span>
+        {!user.isBlocked && (
+            <button
+                onClick={() => blockUser(user.id)}
+                className="bg-red-500 text-white px-3 py-1 rounded-md"
+            >
+                Block User
+            </button>
+        )}
+    </div>
+))}
         </div>
       </section>
 
@@ -146,7 +138,7 @@ const unblockUser = async (userId) => {
     <div className="bg-gray-100 p-5 rounded-md">
         {blockedUsers.map(user => (
             <div key={user.id} className="flex justify-between items-center mb-2">
-                <span>{user.username} (Blocked)</span>
+                <span>{user.username}</span>
                 <button
                     onClick={() => unblockUser(user.id)}
                     className="bg-green-500 text-white px-3 py-1 rounded-md"
@@ -158,40 +150,56 @@ const unblockUser = async (userId) => {
     </div>
 </section>
 
-      <section>
-        <h2 className="text-2xl font-semibold mb-3">Manage Events</h2>
-        <div className="bg-gray-100 p-5 rounded-md">
-          {events.map(item => (
-            <div key={item.id} className="flex justify-between items-center mb-2">
-              <span>{item.title} {item.isApproved ? '(Approved)' : '(Not Approved)'}</span>
-              <div className="space-x-2">
-                {!item.isApproved && (
-                  <button
-                    onClick={() => approveEvent(item.id)}
-                    className="bg-green-500 text-white px-3 py-1 rounded-md"
-                  >
-                    Approve Event
-                  </button>
-                )}
-                {item.isApproved && (
-                  <button
-                    onClick={() => rejectEvent(item.id)}
-                    className="bg-yellow-500 text-white px-3 py-1 rounded-md"
-                  >
-                    Reject Event
-                  </button>
-                )}
-                <button
-                  onClick={() => removeContent(item.id)}
-                  className="bg-red-500 text-white px-3 py-1 rounded-md"
-                >
-                  Remove Event
-                </button>
-              </div>
-            </div>
-          ))}
+<section>
+  <h2 className="text-2xl font-semibold mb-3">Manage Events</h2>
+  <div className="bg-gray-100 p-5 rounded-md">
+    {events.map(item => (
+      <div key={item.id} className="flex justify-between items-center mb-2">
+        <span>
+          {item.title} 
+          {item.isApproved === null ? ' (Waiting for approval)' : 
+           item.isApproved ? ' (Approved)' : ' (Rejected)'}
+        </span>
+        <div className="space-x-2">
+          {item.isApproved === null && (
+            <>
+              <button
+                onClick={() => approveEvent(item.id)}
+                className="bg-green-500 text-white px-3 py-1 rounded-md"
+              >
+                Approve Event
+              </button>
+              <button
+                onClick={() => rejectEvent(item.id)}
+                className="bg-yellow-500 text-white px-3 py-1 rounded-md"
+              >
+                Reject Event
+              </button>
+            </>
+          )}
+          {item.isApproved === false && (
+            <button
+              onClick={() => approveEvent(item.id)}
+              className="bg-green-500 text-white px-3 py-1 rounded-md"
+            >
+              Approve Event
+            </button>
+          )}
+          {item.isApproved === true && (
+            <button
+              onClick={() => rejectEvent(item.id)}
+              className="bg-yellow-500 text-white px-3 py-1 rounded-md"
+            >
+              Reject Event
+            </button>
+          )}
         </div>
-      </section>
+      </div>
+    ))}
+  </div>
+</section>
+
+
 
       <section className="mt-10">
         <h2 className="text-2xl font-semibold mb-3">Manage Categories</h2>

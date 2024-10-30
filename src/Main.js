@@ -16,7 +16,9 @@ function Main() {
   const fetchEvents = async () => {
     try {
       const res = await axios.get("http://localhost:3001/api/events");
-      setEvents(res.data);
+      // Filter events to only include approved ones or pending approval ones
+      const filteredEvents = res.data.filter(event => event.isApproved !== false);
+      setEvents(filteredEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
     }
@@ -54,7 +56,7 @@ function Main() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setNewEvent({ title: "", category: "", location: "", events_data: "", picture: null });
-      fetchEvents();
+      fetchEvents(); // Re-fetch events to show newly added events
     } catch (error) {
       console.error('Error adding event:', error);
     }
@@ -169,6 +171,12 @@ function Main() {
                 <p className="text-gray-400">Date: {new Date(event.events_data).toLocaleString()}</p>
                 {event.picture && (
                   <img src={`http://localhost:3001/uploads/${event.picture}`} alt={event.title} className="mt-2 max-w-full h-auto rounded" />
+                )}
+                {event.isApproved === null && (
+                  <p className="text-yellow-500 mt-2">Waiting for approval</p>
+                )}
+                {event.isApproved && (
+                  <p className="text-green-500 mt-2">Approved</p>
                 )}
                 <button
                   onClick={() => handleDeleteEvent(event.id)}

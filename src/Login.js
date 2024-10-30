@@ -72,27 +72,12 @@ function Login() {
               />
             </div>
 
-            <div className="flex justify-between items-center mb-4">
-              <a href="#" className="text-sm text-white hover:underline">
-                Forgot your password?
-              </a>
-            </div>
-
             <button
               type="submit"
               className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition duration-300"
             >
               Login
             </button>
-
-            <div className="text-center mt-4">
-              <p className="text-sm">
-                Don't have an account?{' '}
-                <Link to="/register" className="text-white hover:underline">
-                  Sign up
-                </Link>
-              </p>
-            </div>
           </form>
         </div>
       </div>

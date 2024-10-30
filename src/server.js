@@ -13,13 +13,14 @@ app.use(express.json());
 
 app.get('/api/users', async (req, res) => {
   try {
-      const users = await db.query('SELECT id, username, isBlocked FROM users');
-      res.status(200).json(users);
+    const [users] = await db.execute('SELECT * FROM users');
+    res.json(users);
   } catch (error) {
-      console.error('Error fetching users:', error);
-      res.status(500).send({ message: 'Error fetching users.' });
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Error fetching users' });
   }
 });
+
 
 app.post('/api/users', async (req, res) => {
   const { username, password } = req.body;
@@ -46,24 +47,27 @@ app.post('/api/users', async (req, res) => {
 });
 
 app.post('/api/users/block', async (req, res) => {
-  const { userId, action } = req.body;
+  const { id, action } = req.body;
+
+  if (!id || !action) {
+    return res.status(400).json({ error: 'User ID and action are required' });
+  }
+
   try {
-    const [result] = await db.execute(
-      'UPDATE users SET isBlocked = ? WHERE id = ?',
-      [action === 'block' ? 1 : 0, userId]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    if (action === 'block') {
+      await db.execute('UPDATE users SET isBlocked = 1 WHERE id = ?', [id]);
+      res.status(200).json({ message: 'User blocked successfully' });
+    } else if (action === 'unblock') {
+      await db.execute('UPDATE users SET isBlocked = 0 WHERE id = ?', [id]);
+      res.status(200).json({ message: 'User unblocked successfully' });
+    } else {
+      return res.status(400).json({ error: 'Invalid action' });
     }
-
-    res.json({ message: `User ${action}ed successfully` });
   } catch (error) {
     console.error('Error blocking/unblocking user:', error);
-    res.status(500).json({ error: 'Error processing request' });
+    res.status(500).json({ error: 'Database error' });
   }
 });
-
 
 
 app.post('/api/events', upload.single('picture'), async (req, res) => {
@@ -92,7 +96,7 @@ app.post('/api/categories', async (req, res) => {
   try {
     if (!name) {
       return res.status(400).json({ error: 'Category name is required' });
-    }
+    }a
 
     const [result] = await db.execute('INSERT INTO categories (name) VALUES (?)', [name]);
     res.status(201).json({ message: 'Category added successfully', categoryId: result.insertId });
@@ -104,13 +108,46 @@ app.post('/api/categories', async (req, res) => {
 
 app.get('/api/events', async (req, res) => {
   try {
-    const [events] = await db.execute('SELECT * FROM events');
+    const [events] = await db.execute('SELECT * FROM events WHERE isApproved IS NULL OR isApproved = 1');
     res.json(events);
   } catch (error) {
     console.error('Error fetching events:', error);
     res.status(500).json({ error: 'Error fetching events' });
   }
 });
+
+app.post('/api/events/approve', async (req, res) => {
+  const { eventId } = req.body;
+
+  if (!eventId) {
+    return res.status(400).json({ error: 'Event ID is required' });
+  }
+
+  try {
+    await db.execute('UPDATE events SET isApproved = 1 WHERE id = ?', [eventId]);
+    res.status(200).json({ message: 'Event approved successfully' });
+  } catch (error) {
+    console.error('Error approving event:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.post('/api/events/reject', async (req, res) => {
+  const { eventId } = req.body;
+
+  if (!eventId) {
+    return res.status(400).json({ error: 'Event ID is required' });
+  }
+
+  try {
+    await db.execute('UPDATE events SET isApproved = 0 WHERE id = ?', [eventId]);
+    res.status(200).json({ message: 'Event rejected successfully' });
+  } catch (error) {
+    console.error('Error rejecting event:', error);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 
 app.get('/api/categories', async (req, res) => {
   try {

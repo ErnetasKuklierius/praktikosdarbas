@@ -24,4 +24,4 @@ yarn-error.log*
 
 # ignore
 
-login.env
+.env

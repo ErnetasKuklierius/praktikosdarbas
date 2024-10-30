@@ -1,21 +1,17 @@
-require('dotenv').config();
 const mysql = require('mysql2');
 
-if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
-  throw new Error('Database environment variables are not set');
-}
-
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+const dbConfig = {
+  host: 'localhost',          
+  user: 'root',               
+  password: 'AdminasKietas69',               
+  database: 'eventsapp',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
   connectTimeout: 10000,
-}).promise();
+};
 
+const pool = mysql.createPool(dbConfig).promise();
 
 pool.getConnection()
   .then(conn => {
