@@ -29,7 +29,7 @@ Prisijunkite prie savo MySQL serverio naudodami root vartotojo vardą ir atitink
 
 Eikite į "Server" > "Data Import".
 
-Pasirinkite "Import from Self-Contained File" ir naršykite, kad rastumėte db.sql.
+Pasirinkite "Import from Self-Contained File" ir naršykite, kad rastumėte db.sql (database aplankale, kuris yra projekto aplankale).
 
 Pasirinkite "Default Schema to be Imported To" ir pasirinkite arba sukurkite naują duomenų bazę, kurioje bus importuojami duomenys.
 
